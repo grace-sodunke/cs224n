@@ -57,9 +57,23 @@ class AdamW(Optimizer):
                 # 3- Update parameters (p.data).
                 # 4- After that main gradient-based update, update again using weight decay
                 #    (incorporating the learning rate again).
+                if len(state) == 0:
+                    state['m'] = torch.zeros(grad.size(), dtype=torch.float32)
+                    state['v'] = torch.zeros(grad.size(), dtype=torch.float32)
+                    state['t'] = 0
 
-                ### TODO
-                raise NotImplementedError
+                    state['m'] = state['m'].to(grad.device)
+                    state['v'] = state['v'].to(grad.device)
 
+                beta_1, beta_2 = group['betas']
+                eps = group['eps']
+                weight_decay = group['weight_decay'] 
+
+                state['t'] = state['t'] + 1
+                grad_t = grad + weight_decay * p.data
+                state['m'] = beta_1 * state['m'] + (1 - beta_1) * grad_t
+                state['v'] = beta_2 * state['v'] + (1 - beta_2) * grad_t**2
+                alpha_t = alpha * math.sqrt(1.0 - beta_2**state['t']) / (1.0 - beta_1**state['t'])
+                p.data = p.data - (alpha_t * state['m']) / (torch.sqrt(state['v']) + eps) - alpha_t * weight_decay * p.data
 
         return loss
